@@ -1,0 +1,218 @@
+[
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestFindTestsInFile_IgnoresMethodsAndNonMatchingNames$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestFindTestsInFile_IgnoresMethodsAndNonMatchingNames",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestFindTestsInFile_IgnoresMethodsAndNonMatchingNames",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestMergeTasks_PrunesGeneratedAndUpsertsByLabel$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestMergeTasks_PrunesGeneratedAndUpsertsByLabel",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestMergeTasks_PrunesGeneratedAndUpsertsByLabel",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestReadTasks_SupportsCommentsAndTrailingCommas$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestReadTasks_SupportsCommentsAndTrailingCommas",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestReadTasks_SupportsCommentsAndTrailingCommas",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestRunClear_RemovesOnlyGeneratedTasks$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunClear_RemovesOnlyGeneratedTasks",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRunClear_RemovesOnlyGeneratedTasks",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestRunClear_UsesCustomGeneratedMarker$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunClear_UsesCustomGeneratedMarker",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRunClear_UsesCustomGeneratedMarker",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestRunGenerateDebug_WritesDebugConfigs$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerateDebug_WritesDebugConfigs",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRunGenerateDebug_WritesDebugConfigs",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestRunGenerate_CreatesTasksForCurrentFileAndPreservesManual$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerate_CreatesTasksForCurrentFileAndPreservesManual",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRunGenerate_CreatesTasksForCurrentFileAndPreservesManual",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestRunGenerate_PrintsEachGeneratedTask$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerate_PrintsEachGeneratedTask",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRunGenerate_PrintsEachGeneratedTask",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestRunGenerate_UsesCommandLineGoTestArgs$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerate_UsesCommandLineGoTestArgs",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRunGenerate_UsesCommandLineGoTestArgs",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestRunGenerate_UsesEnvValues$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerate_UsesEnvValues",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRunGenerate_UsesEnvValues",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestRun_HelpAndUnknownCommand$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRun_HelpAndUnknownCommand",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRun_HelpAndUnknownCommand",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestStripJSONComments_UnterminatedBlockCommentReturnsError$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestStripJSONComments_UnterminatedBlockCommentReturnsError",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestStripJSONComments_UnterminatedBlockCommentReturnsError",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  }
+]

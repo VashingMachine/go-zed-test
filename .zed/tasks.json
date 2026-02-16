@@ -1,0 +1,273 @@
+[
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestFindTestsInFile_IgnoresMethodsAndNonMatchingNames$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestFindTestsInFile_IgnoresMethodsAndNonMatchingNames",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestFindTestsInFile_IgnoresMethodsAndNonMatchingNames",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestMergeTasks_PrunesGeneratedAndUpsertsByLabel$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestMergeTasks_PrunesGeneratedAndUpsertsByLabel",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestMergeTasks_PrunesGeneratedAndUpsertsByLabel",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestReadTasks_SupportsCommentsAndTrailingCommas$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestReadTasks_SupportsCommentsAndTrailingCommas",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestReadTasks_SupportsCommentsAndTrailingCommas",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestRunClear_RemovesOnlyGeneratedTasks$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunClear_RemovesOnlyGeneratedTasks",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestRunClear_RemovesOnlyGeneratedTasks",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestRunClear_UsesCustomGeneratedMarker$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunClear_UsesCustomGeneratedMarker",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestRunClear_UsesCustomGeneratedMarker",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestRunGenerate_CreatesTasksForCurrentFileAndPreservesManual$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerate_CreatesTasksForCurrentFileAndPreservesManual",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestRunGenerate_CreatesTasksForCurrentFileAndPreservesManual",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestRunGenerate_UsesConfigValues$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerate_UsesConfigValues",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestRunGenerate_UsesConfigValues",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestRun_HelpAndUnknownCommand$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRun_HelpAndUnknownCommand",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestRun_HelpAndUnknownCommand",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestStripJSONComments_UnterminatedBlockCommentReturnsError$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestStripJSONComments_UnterminatedBlockCommentReturnsError",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestStripJSONComments_UnterminatedBlockCommentReturnsError",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestRunGenerateDebug_WritesDebugConfigs$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerateDebug_WritesDebugConfigs",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestRunGenerateDebug_WritesDebugConfigs",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestRunGenerate_PrintsEachGeneratedTask$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerate_PrintsEachGeneratedTask",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestRunGenerate_PrintsEachGeneratedTask",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestRunGenerate_UsesCommandLineGoTestArgs$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerate_UsesCommandLineGoTestArgs",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestRunGenerate_UsesCommandLineGoTestArgs",
+    "reveal": "always",
+    "use_new_terminal": false
+  },
+  {
+    "allow_concurrent_runs": false,
+    "args": [
+      "test",
+      "-v",
+      "-count=1",
+      "./cmd/go-zed-tasks",
+      "-run",
+      "^TestRunGenerate_UsesEnvValues$"
+    ],
+    "command": "go",
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerate_UsesEnvValues",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "hide": "never",
+    "label": "go:TestRunGenerate_UsesEnvValues",
+    "reveal": "always",
+    "use_new_terminal": false
+  }
+]
