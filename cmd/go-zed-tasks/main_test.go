@@ -391,13 +391,16 @@ import "testing"
 func TestFromOtherFile(t *testing.T) {}
 `)
 
-	err := runGenerate([]string{
-		"-file", targetFile,
-		"-root", root,
-		"-tasks", tasksPath,
-		"-discover-subtests",
-	}, generateTargetTasks)
-	require.NoError(t, err)
+	out := captureStdout(t, func() {
+		err := runGenerate([]string{
+			"-file", targetFile,
+			"-root", root,
+			"-tasks", tasksPath,
+			"-discover-subtests",
+		}, generateTargetTasks)
+		require.NoError(t, err)
+	})
+	assert.Contains(t, out, "Discovered by runtime execution: 6 (new: 4, timeout 30s)")
 
 	tasks := readTasksForTest(t, tasksPath)
 	labels := labelsFromTasks(tasks)
@@ -433,13 +436,16 @@ func TestWithSubtests(t *testing.T) {
 }
 `)
 
-	err := runGenerate([]string{
-		"-file", targetFile,
-		"-root", root,
-		"-debug", debugPath,
-		"-discover-subtests",
-	}, generateTargetDebug)
-	require.NoError(t, err)
+	out := captureStdout(t, func() {
+		err := runGenerate([]string{
+			"-file", targetFile,
+			"-root", root,
+			"-debug", debugPath,
+			"-discover-subtests",
+		}, generateTargetDebug)
+		require.NoError(t, err)
+	})
+	assert.Contains(t, out, "Discovered by runtime execution: 2 (new: 1, timeout 30s)")
 
 	configs := readTasksForTest(t, debugPath)
 	labels := labelsFromTasks(configs)

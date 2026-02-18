@@ -205,6 +205,7 @@ func runGenerate(args []string, target generateTarget) error {
 
 	selectedTests := append([]string(nil), runnableTests...)
 	discoveredTests := []string{}
+	discoveredNewCount := 0
 	subtestDiscoveryTimeout := time.Duration(0)
 	if opts.discoverSubtests {
 		subtestDiscoveryTimeout, err = resolveSubtestTimeout(cfg.SubtestTimeout, opts.subtestTimeout)
@@ -212,7 +213,7 @@ func runGenerate(args []string, target generateTarget) error {
 			return err
 		}
 
-		discoveredTests, err := discoverSubtestsWithGo(
+		discoveredTests, err = discoverSubtestsWithGo(
 			cfg.GoBinary,
 			packageDir,
 			runnableTests,
@@ -225,6 +226,7 @@ func runGenerate(args []string, target generateTarget) error {
 
 		selectedTests = mergeUniqueTests(runnableTests, discoveredTests)
 		sort.Strings(selectedTests)
+		discoveredNewCount = countUniqueNotInBase(runnableTests, discoveredTests)
 	}
 
 	if target == generateTargetTasks {
@@ -253,7 +255,7 @@ func runGenerate(args []string, target generateTarget) error {
 		fmt.Printf("Updated %s\n", tasksAbsPath)
 		fmt.Printf("Discovered in file: %d, runnable with go test -list: %d\n", len(testsInFile), len(runnableTests))
 		if opts.discoverSubtests {
-			fmt.Printf("Discovered by runtime execution: %d (timeout %s)\n", len(discoveredTests), subtestDiscoveryTimeout)
+			fmt.Printf("Discovered by runtime execution: %d (new: %d, timeout %s)\n", len(discoveredTests), discoveredNewCount, subtestDiscoveryTimeout)
 		}
 		fmt.Printf("Tasks added: %d, updated: %d, removed: %d\n", stats.Added, stats.Updated, stats.Removed)
 		for _, testName := range selectedTests {
@@ -288,7 +290,7 @@ func runGenerate(args []string, target generateTarget) error {
 		fmt.Printf("Updated %s\n", debugAbsPath)
 		fmt.Printf("Discovered in file: %d, runnable with go test -list: %d\n", len(testsInFile), len(runnableTests))
 		if opts.discoverSubtests {
-			fmt.Printf("Discovered by runtime execution: %d (timeout %s)\n", len(discoveredTests), subtestDiscoveryTimeout)
+			fmt.Printf("Discovered by runtime execution: %d (new: %d, timeout %s)\n", len(discoveredTests), discoveredNewCount, subtestDiscoveryTimeout)
 		}
 		fmt.Printf("Debug configs added: %d, updated: %d, removed: %d\n", stats.Added, stats.Updated, stats.Removed)
 		for _, testName := range selectedTests {
@@ -697,6 +699,26 @@ func mergeUniqueTests(base []string, extra []string) []string {
 	}
 
 	return merged
+}
+
+func countUniqueNotInBase(base []string, candidates []string) int {
+	baseSet := make(map[string]struct{}, len(base))
+	for _, name := range base {
+		baseSet[name] = struct{}{}
+	}
+
+	seen := make(map[string]struct{}, len(candidates))
+	count := 0
+	for _, name := range candidates {
+		if _, done := seen[name]; done {
+			continue
+		}
+		seen[name] = struct{}{}
+		if _, exists := baseSet[name]; !exists {
+			count++
+		}
+	}
+	return count
 }
 
 func buildTopLevelRunPattern(testNames []string) string {
