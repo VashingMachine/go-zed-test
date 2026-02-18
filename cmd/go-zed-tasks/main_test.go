@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -31,6 +32,7 @@ var configEnvKeys = []string{
 	"ZED_GO_TASKS_PRUNE_GENERATED",
 	"ZED_GO_TASKS_GENERATED_ENV_KEY",
 	"ZED_GO_TASKS_GENERATED_ENV_VALUE",
+	"ZED_GO_TASKS_SUBTEST_DISCOVERY_TIMEOUT",
 }
 
 func TestRun_HelpAndUnknownCommand(t *testing.T) {
@@ -357,6 +359,101 @@ func TestOne(t *testing.T) {}
 	assert.Equal(t, "target_test.go", env["ZED_GO_TEST_FILE"])
 }
 
+func TestRunGenerate_DiscoverSubtests_GeneratesTasksForDiscoveredSubtests(t *testing.T) {
+	clearConfigEnv(t)
+
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "pkg")
+	targetFile := filepath.Join(moduleDir, "target_test.go")
+	tasksPath := filepath.Join(root, ".zed", "tasks.json")
+
+	writeFile(t, filepath.Join(root, "go.mod"), "module example.com/sample\n\ngo 1.22\n")
+	writeFile(t, targetFile, `package sample
+import "testing"
+
+func TestWithSubtests(t *testing.T) {
+  cases := []string{"one", "two"}
+  for _, tc := range cases {
+    tc := tc
+    t.Run(tc, func(t *testing.T) {})
+  }
+
+  t.Run("nested", func(t *testing.T) {
+    t.Run("leaf", func(t *testing.T) {})
+  })
+}
+
+func TestPlain(t *testing.T) {}
+`)
+	writeFile(t, filepath.Join(moduleDir, "other_test.go"), `package sample
+import "testing"
+
+func TestFromOtherFile(t *testing.T) {}
+`)
+
+	err := runGenerate([]string{
+		"-file", targetFile,
+		"-root", root,
+		"-tasks", tasksPath,
+		"-discover-subtests",
+	}, generateTargetTasks)
+	require.NoError(t, err)
+
+	tasks := readTasksForTest(t, tasksPath)
+	labels := labelsFromTasks(tasks)
+	sort.Strings(labels)
+	assert.Equal(t, []string{
+		"go:TestPlain",
+		"go:TestWithSubtests",
+		"go:TestWithSubtests/nested",
+		"go:TestWithSubtests/nested/leaf",
+		"go:TestWithSubtests/one",
+		"go:TestWithSubtests/two",
+	}, labels)
+
+	leafTask := taskByLabel(t, tasks, "go:TestWithSubtests/nested/leaf")
+	args := toStringSlice(t, leafTask["args"])
+	assert.Equal(t, []string{"test", "./pkg", "-run", "^TestWithSubtests$/^nested$/^leaf$"}, args)
+}
+
+func TestRunGenerateDebug_DiscoverSubtests_GeneratesDebugConfigs(t *testing.T) {
+	clearConfigEnv(t)
+
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "pkg")
+	targetFile := filepath.Join(moduleDir, "target_test.go")
+	debugPath := filepath.Join(root, ".zed", "debug.json")
+
+	writeFile(t, filepath.Join(root, "go.mod"), "module example.com/sample\n\ngo 1.22\n")
+	writeFile(t, targetFile, `package sample
+import "testing"
+
+func TestWithSubtests(t *testing.T) {
+  t.Run("one", func(t *testing.T) {})
+}
+`)
+
+	err := runGenerate([]string{
+		"-file", targetFile,
+		"-root", root,
+		"-debug", debugPath,
+		"-discover-subtests",
+	}, generateTargetDebug)
+	require.NoError(t, err)
+
+	configs := readTasksForTest(t, debugPath)
+	labels := labelsFromTasks(configs)
+	sort.Strings(labels)
+	assert.Equal(t, []string{
+		"go:debug:TestWithSubtests",
+		"go:debug:TestWithSubtests/one",
+	}, labels)
+
+	oneConfig := taskByLabel(t, configs, "go:debug:TestWithSubtests/one")
+	args := toStringSlice(t, oneConfig["args"])
+	assert.Equal(t, []string{"-test.run", "^TestWithSubtests$/^one$"}, args)
+}
+
 func TestRunClear_RemovesOnlyGeneratedTasks(t *testing.T) {
 	clearConfigEnv(t)
 
@@ -442,6 +539,11 @@ func TestStripJSONComments_UnterminatedBlockCommentReturnsError(t *testing.T) {
 	_, err := stripJSONComments([]byte(`[{/* broken`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unterminated block comment")
+}
+
+func TestRunPatternForTestName_BuildsSegmentAwarePattern(t *testing.T) {
+	assert.Equal(t, "^TestTop$", runPatternForTestName("TestTop"))
+	assert.Equal(t, "^TestTop$/^child$/^leaf$", runPatternForTestName("TestTop/child/leaf"))
 }
 
 func writeFile(t *testing.T, path string, content string) {
@@ -573,5 +675,22 @@ func setEnv(t *testing.T, key, value string) {
 			return
 		}
 		_ = os.Unsetenv(key)
+	})
+}
+
+func TestSubtest(t *testing.T) {
+	t.Parallel()
+	for i := range 3 {
+		t.Run(fmt.Sprintf("subtest-%d", i), func(t *testing.T) {
+			t.Parallel()
+			t.Run("subsubtest", func(t *testing.T) {
+				t.Parallel()
+				t.Log("subsubtest")
+			})
+		})
+	}
+	t.Run("failed", func(t *testing.T) {
+		t.Parallel()
+		t.Fail()
 	})
 }

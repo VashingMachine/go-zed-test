@@ -95,6 +95,24 @@
       "-test.v",
       "-test.count=1",
       "-test.run",
+      "^TestRunGenerateDebug_DiscoverSubtests_GeneratesDebugConfigs$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerateDebug_DiscoverSubtests_GeneratesDebugConfigs",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRunGenerateDebug_DiscoverSubtests_GeneratesDebugConfigs",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
       "^TestRunGenerateDebug_WritesDebugConfigs$"
     ],
     "env": {
@@ -121,6 +139,24 @@
       "ZED_GO_TEST_TASK_GENERATED": "1"
     },
     "label": "go:debug:TestRunGenerate_CreatesTasksForCurrentFileAndPreservesManual",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestRunGenerate_DiscoverSubtests_GeneratesTasksForDiscoveredSubtests$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunGenerate_DiscoverSubtests_GeneratesTasksForDiscoveredSubtests",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRunGenerate_DiscoverSubtests_GeneratesTasksForDiscoveredSubtests",
     "mode": "test",
     "program": "./cmd/go-zed-tasks",
     "request": "launch"
@@ -185,6 +221,24 @@
       "-test.v",
       "-test.count=1",
       "-test.run",
+      "^TestRunPatternForTestName_BuildsSegmentAwarePattern$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestRunPatternForTestName_BuildsSegmentAwarePattern",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestRunPatternForTestName_BuildsSegmentAwarePattern",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
       "^TestRun_HelpAndUnknownCommand$"
     ],
     "env": {
@@ -211,6 +265,150 @@
       "ZED_GO_TEST_TASK_GENERATED": "1"
     },
     "label": "go:debug:TestStripJSONComments_UnterminatedBlockCommentReturnsError",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestSubtest$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestSubtest",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestSubtest",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestSubtest$/^failed$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestSubtest/failed",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestSubtest/failed",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestSubtest$/^subtest-0$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestSubtest/subtest-0",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestSubtest/subtest-0",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestSubtest$/^subtest-0$/^subsubtest$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestSubtest/subtest-0/subsubtest",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestSubtest/subtest-0/subsubtest",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestSubtest$/^subtest-1$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestSubtest/subtest-1",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestSubtest/subtest-1",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestSubtest$/^subtest-1$/^subsubtest$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestSubtest/subtest-1/subsubtest",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestSubtest/subtest-1/subsubtest",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestSubtest$/^subtest-2$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestSubtest/subtest-2",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestSubtest/subtest-2",
+    "mode": "test",
+    "program": "./cmd/go-zed-tasks",
+    "request": "launch"
+  },
+  {
+    "adapter": "Delve",
+    "args": [
+      "-test.v",
+      "-test.count=1",
+      "-test.run",
+      "^TestSubtest$/^subtest-2$/^subsubtest$"
+    ],
+    "env": {
+      "ZED_GO_TEST_FILE": "cmd/go-zed-tasks/main_test.go",
+      "ZED_GO_TEST_NAME": "TestSubtest/subtest-2/subsubtest",
+      "ZED_GO_TEST_TASK_GENERATED": "1"
+    },
+    "label": "go:debug:TestSubtest/subtest-2/subsubtest",
     "mode": "test",
     "program": "./cmd/go-zed-tasks",
     "request": "launch"

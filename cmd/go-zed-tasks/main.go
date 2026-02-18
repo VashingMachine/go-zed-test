@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	env "github.com/caarlos0/env/v11"
 )
@@ -39,12 +40,18 @@ type Config struct {
 	PruneGenerated       bool     `env:"PRUNE_GENERATED" envDefault:"true"`
 	GeneratedEnvKey      string   `env:"GENERATED_ENV_KEY" envDefault:"ZED_GO_TEST_TASK_GENERATED"`
 	GeneratedEnvValue    string   `env:"GENERATED_ENV_VALUE" envDefault:"1"`
+	SubtestTimeout       string   `env:"SUBTEST_DISCOVERY_TIMEOUT" envDefault:"30s"`
 }
 
 type mergeStats struct {
 	Added   int
 	Updated int
 	Removed int
+}
+
+type goTestJSONEvent struct {
+	Action string `json:"Action"`
+	Test   string `json:"Test"`
 }
 
 type commonOptions struct {
@@ -56,8 +63,10 @@ type commonOptions struct {
 
 type generateOptions struct {
 	commonOptions
-	goFilePath string
-	goTestArgs stringSliceFlag
+	goFilePath       string
+	goTestArgs       stringSliceFlag
+	subtestTimeout   string
+	discoverSubtests bool
 }
 
 type stringSliceFlag []string
@@ -116,6 +125,8 @@ func runGenerate(args []string, target generateTarget) error {
 	fs.StringVar(&opts.tasksPathArg, "tasks", "", "Override tasks JSON path.")
 	fs.StringVar(&opts.debugPathArg, "debug", "", "Override debug JSON path.")
 	fs.Var(&opts.goTestArgs, "go-test-arg", "Extra go test argument (repeatable). Example: -go-test-arg=-v -go-test-arg=-count=1")
+	fs.StringVar(&opts.subtestTimeout, "subtest-timeout", "", "Timeout for discover-subtests test execution (e.g. 30s, 2m).")
+	fs.BoolVar(&opts.discoverSubtests, "discover-subtests", false, "Run tests with go test -json and include discovered subtests.")
 	fs.BoolVar(&opts.dryRun, "dry-run", false, "Print resulting tasks JSON instead of writing it.")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -192,8 +203,32 @@ func runGenerate(args []string, target generateTarget) error {
 		relFilePath = filepath.ToSlash(rel)
 	}
 
+	selectedTests := append([]string(nil), runnableTests...)
+	discoveredTests := []string{}
+	subtestDiscoveryTimeout := time.Duration(0)
+	if opts.discoverSubtests {
+		subtestDiscoveryTimeout, err = resolveSubtestTimeout(cfg.SubtestTimeout, opts.subtestTimeout)
+		if err != nil {
+			return err
+		}
+
+		discoveredTests, err := discoverSubtestsWithGo(
+			cfg.GoBinary,
+			packageDir,
+			runnableTests,
+			subtestDiscoveryTimeout,
+			allExtraGoTestArgs,
+		)
+		if err != nil {
+			return fmt.Errorf("discover subtests: %w", err)
+		}
+
+		selectedTests = mergeUniqueTests(runnableTests, discoveredTests)
+		sort.Strings(selectedTests)
+	}
+
 	if target == generateTargetTasks {
-		generatedTasks := makeGeneratedTasks(runnableTests, pkgArg, relFilePath, cfg, allExtraGoTestArgs)
+		generatedTasks := makeGeneratedTasks(selectedTests, pkgArg, relFilePath, cfg, allExtraGoTestArgs)
 
 		tasksAbsPath := resolvePath(absRootPath, cfg.TasksPath)
 		mergedTasks, stats, err := mergeTasks(tasksAbsPath, generatedTasks, cfg)
@@ -217,15 +252,18 @@ func runGenerate(args []string, target generateTarget) error {
 
 		fmt.Printf("Updated %s\n", tasksAbsPath)
 		fmt.Printf("Discovered in file: %d, runnable with go test -list: %d\n", len(testsInFile), len(runnableTests))
+		if opts.discoverSubtests {
+			fmt.Printf("Discovered by runtime execution: %d (timeout %s)\n", len(discoveredTests), subtestDiscoveryTimeout)
+		}
 		fmt.Printf("Tasks added: %d, updated: %d, removed: %d\n", stats.Added, stats.Updated, stats.Removed)
-		for _, testName := range runnableTests {
+		for _, testName := range selectedTests {
 			fmt.Printf("Generated task: %s%s\n", cfg.LabelPrefix, testName)
 		}
 		return nil
 	}
 
 	if target == generateTargetDebug {
-		generatedDebugConfigs := makeGeneratedDebugConfigs(runnableTests, pkgArg, relFilePath, cfg, allExtraGoTestArgs)
+		generatedDebugConfigs := makeGeneratedDebugConfigs(selectedTests, pkgArg, relFilePath, cfg, allExtraGoTestArgs)
 
 		debugAbsPath := resolvePath(absRootPath, cfg.DebugPath)
 		mergedDebug, stats, err := mergeTasks(debugAbsPath, generatedDebugConfigs, cfg)
@@ -249,8 +287,11 @@ func runGenerate(args []string, target generateTarget) error {
 
 		fmt.Printf("Updated %s\n", debugAbsPath)
 		fmt.Printf("Discovered in file: %d, runnable with go test -list: %d\n", len(testsInFile), len(runnableTests))
+		if opts.discoverSubtests {
+			fmt.Printf("Discovered by runtime execution: %d (timeout %s)\n", len(discoveredTests), subtestDiscoveryTimeout)
+		}
 		fmt.Printf("Debug configs added: %d, updated: %d, removed: %d\n", stats.Added, stats.Updated, stats.Removed)
-		for _, testName := range runnableTests {
+		for _, testName := range selectedTests {
 			fmt.Printf("Generated debug config: %s%s\n", cfg.DebugLabelPrefix, testName)
 		}
 		return nil
@@ -362,6 +403,8 @@ Flags (both commands):
 Generate-only:
   -file      Go file to scan (required)
   -go-test-arg  Extra go test argument (repeatable), also supports args after --.
+  -discover-subtests Run tests with go test -json and include discovered subtests.
+  -subtest-timeout Timeout for subtest discovery execution (default from env, 30s).
 
 Configuration:
   Uses environment variables with prefix ZED_GO_TASKS_.
@@ -472,7 +515,7 @@ func makeGeneratedTasks(testNames []string, pkgArg, relFilePath string, cfg Conf
 		args := make([]string, 0, 5+len(extraGoTestArgs))
 		args = append(args, "test")
 		args = append(args, extraGoTestArgs...)
-		args = append(args, pkgArg, "-run", "^"+regexp.QuoteMeta(testName)+"$")
+		args = append(args, pkgArg, "-run", runPatternForTestName(testName))
 
 		task := map[string]any{
 			"label":                 cfg.LabelPrefix + testName,
@@ -498,7 +541,7 @@ func makeGeneratedDebugConfigs(testNames []string, pkgArg, relFilePath string, c
 	for _, testName := range testNames {
 		taskArgs := make([]string, 0, len(extraGoTestArgs)+2)
 		taskArgs = append(taskArgs, normalizeGoTestArgsForDelve(extraGoTestArgs)...)
-		taskArgs = append(taskArgs, "-test.run", "^"+regexp.QuoteMeta(testName)+"$")
+		taskArgs = append(taskArgs, "-test.run", runPatternForTestName(testName))
 
 		config := map[string]any{
 			"label":   cfg.DebugLabelPrefix + testName,
@@ -534,6 +577,151 @@ func normalizeGoTestArgsForDelve(args []string) []string {
 		}
 	}
 	return out
+}
+
+func resolveSubtestTimeout(fromEnv, fromFlag string) (time.Duration, error) {
+	value := strings.TrimSpace(fromEnv)
+	if strings.TrimSpace(fromFlag) != "" {
+		value = strings.TrimSpace(fromFlag)
+	}
+	if value == "" {
+		value = "30s"
+	}
+
+	timeout, err := time.ParseDuration(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid subtest discovery timeout %q: %w", value, err)
+	}
+	if timeout <= 0 {
+		return 0, fmt.Errorf("subtest discovery timeout must be > 0, got %q", value)
+	}
+	return timeout, nil
+}
+
+func discoverSubtestsWithGo(
+	goBinary string,
+	packageDir string,
+	topLevelTests []string,
+	timeout time.Duration,
+	extraGoTestArgs []string,
+) ([]string, error) {
+	if len(topLevelTests) == 0 {
+		return []string{}, nil
+	}
+
+	args := []string{"test", "-json", "-count=1", "-timeout", timeout.String()}
+	args = append(args, sanitizeDiscoveryGoTestArgs(extraGoTestArgs)...)
+	args = append(args, "-run", buildTopLevelRunPattern(topLevelTests), ".")
+
+	cmd := exec.Command(goBinary, args...)
+	cmd.Dir = packageDir
+	out, err := cmd.CombinedOutput()
+
+	discovered, parseErr := parseRunEventsFromGoTestJSON(out)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+
+	// Discovery can still be useful even if tests failed; only fail hard when nothing was discovered.
+	if err != nil && len(discovered) == 0 {
+		return nil, fmt.Errorf("go test discovery failed in %s: %w\n%s", packageDir, err, strings.TrimSpace(string(out)))
+	}
+
+	return discovered, nil
+}
+
+func sanitizeDiscoveryGoTestArgs(args []string) []string {
+	out := make([]string, 0, len(args))
+	for _, arg := range args {
+		switch {
+		case arg == "-json", arg == "-run", strings.HasPrefix(arg, "-run="),
+			arg == "-list", strings.HasPrefix(arg, "-list="),
+			arg == "-timeout", strings.HasPrefix(arg, "-timeout="),
+			arg == "-count", strings.HasPrefix(arg, "-count="):
+			continue
+		default:
+			out = append(out, arg)
+		}
+	}
+	return out
+}
+
+func parseRunEventsFromGoTestJSON(output []byte) ([]string, error) {
+	seen := make(map[string]struct{})
+	scanner := bufio.NewScanner(bytes.NewReader(output))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		var ev goTestJSONEvent
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
+			// Ignore non-JSON lines and keep scanning.
+			continue
+		}
+		if ev.Action == "run" && ev.Test != "" {
+			seen[ev.Test] = struct{}{}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	tests := make([]string, 0, len(seen))
+	for name := range seen {
+		tests = append(tests, name)
+	}
+	sort.Strings(tests)
+	return tests, nil
+}
+
+func mergeUniqueTests(base []string, extra []string) []string {
+	seen := make(map[string]struct{}, len(base)+len(extra))
+	merged := make([]string, 0, len(base)+len(extra))
+
+	for _, testName := range base {
+		if _, ok := seen[testName]; ok {
+			continue
+		}
+		seen[testName] = struct{}{}
+		merged = append(merged, testName)
+	}
+	for _, testName := range extra {
+		if _, ok := seen[testName]; ok {
+			continue
+		}
+		seen[testName] = struct{}{}
+		merged = append(merged, testName)
+	}
+
+	return merged
+}
+
+func buildTopLevelRunPattern(testNames []string) string {
+	if len(testNames) == 1 {
+		return "^" + regexp.QuoteMeta(testNames[0]) + "$"
+	}
+
+	parts := make([]string, 0, len(testNames))
+	for _, name := range testNames {
+		parts = append(parts, regexp.QuoteMeta(name))
+	}
+	sort.Strings(parts)
+	return "^(" + strings.Join(parts, "|") + ")$"
+}
+
+func runPatternForTestName(testName string) string {
+	if testName == "" {
+		return "^$"
+	}
+
+	segments := strings.Split(testName, "/")
+	for i, segment := range segments {
+		segments[i] = "^" + regexp.QuoteMeta(segment) + "$"
+	}
+	return strings.Join(segments, "/")
 }
 
 func mergeTasks(tasksPath string, generated []map[string]any, cfg Config) ([]map[string]any, mergeStats, error) {
