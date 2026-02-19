@@ -21,7 +21,13 @@ import (
 )
 
 const (
-	envPrefix = "ZED_GO_TASKS_"
+	envPrefix            = "ZED_GO_TASKS_"
+	tasksPathEnvKey      = envPrefix + "TASKS_PATH"
+	debugPathEnvKey      = envPrefix + "DEBUG_PATH"
+	defaultVSTasksPath   = ".vscode/tasks.json"
+	defaultVSDebugPath   = ".vscode/launch.json"
+	defaultVSCodeVersion = "2.0.0"
+	defaultVSLaunchVer   = "0.2.0"
 )
 
 type Config struct {
@@ -58,6 +64,7 @@ type commonOptions struct {
 	rootPath     string
 	tasksPathArg string
 	debugPathArg string
+	editor       editorKind
 	dryRun       bool
 }
 
@@ -116,14 +123,23 @@ const (
 	generateTargetDebug generateTarget = "debug"
 )
 
+type editorKind string
+
+const (
+	editorKindZed    editorKind = "zed"
+	editorKindVSCode editorKind = "vscode"
+)
+
 func runGenerate(args []string, target generateTarget) error {
 	var opts generateOptions
+	editorArg := string(editorKindZed)
 	fs := flag.NewFlagSet("generate", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	fs.StringVar(&opts.goFilePath, "file", "", "Path to the Go file currently open in Zed (required).")
+	fs.StringVar(&opts.goFilePath, "file", "", "Path to the Go file currently open in the editor (required).")
 	fs.StringVar(&opts.rootPath, "root", "", "Workspace root. If empty, auto-detected from go.mod/.git.")
 	fs.StringVar(&opts.tasksPathArg, "tasks", "", "Override tasks JSON path.")
 	fs.StringVar(&opts.debugPathArg, "debug", "", "Override debug JSON path.")
+	fs.StringVar(&editorArg, "editor", editorArg, "Editor target. Supported: zed, vscode.")
 	fs.Var(&opts.goTestArgs, "go-test-arg", "Extra go test argument (repeatable). Example: -go-test-arg=-v -go-test-arg=-count=1")
 	fs.StringVar(&opts.subtestTimeout, "subtest-timeout", "", "Timeout for discover-subtests test execution (e.g. 30s, 2m).")
 	fs.BoolVar(&opts.discoverSubtests, "discover-subtests", false, "Run tests with go test -json and include discovered subtests.")
@@ -131,6 +147,11 @@ func runGenerate(args []string, target generateTarget) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	editor, err := parseEditorKind(editorArg)
+	if err != nil {
+		return err
+	}
+	opts.editor = editor
 
 	if opts.goFilePath == "" {
 		return fmt.Errorf("missing required flag: -file")
@@ -230,17 +251,32 @@ func runGenerate(args []string, target generateTarget) error {
 	}
 
 	if target == generateTargetTasks {
-		generatedTasks := makeGeneratedTasks(selectedTests, pkgArg, relFilePath, cfg, allExtraGoTestArgs)
-
 		tasksAbsPath := resolvePath(absRootPath, cfg.TasksPath)
-		mergedTasks, stats, err := mergeTasks(tasksAbsPath, generatedTasks, cfg)
-		if err != nil {
-			return fmt.Errorf("merge tasks: %w", err)
-		}
+		stats := mergeStats{}
+		var output []byte
 
-		output, err := marshalTasks(mergedTasks)
-		if err != nil {
-			return err
+		if opts.editor == editorKindVSCode {
+			generatedTasks := makeGeneratedVSCodeTasks(selectedTests, pkgArg, relFilePath, cfg, allExtraGoTestArgs)
+			mergedDoc, mergedStats, err := mergeVSCodeTasks(tasksAbsPath, generatedTasks, cfg)
+			if err != nil {
+				return fmt.Errorf("merge tasks: %w", err)
+			}
+			stats = mergedStats
+			output, err = marshalDocument(mergedDoc)
+			if err != nil {
+				return err
+			}
+		} else {
+			generatedTasks := makeGeneratedTasks(selectedTests, pkgArg, relFilePath, cfg, allExtraGoTestArgs)
+			mergedTasks, mergedStats, err := mergeTasks(tasksAbsPath, generatedTasks, cfg)
+			if err != nil {
+				return fmt.Errorf("merge tasks: %w", err)
+			}
+			stats = mergedStats
+			output, err = marshalTasks(mergedTasks)
+			if err != nil {
+				return err
+			}
 		}
 
 		if opts.dryRun {
@@ -265,17 +301,32 @@ func runGenerate(args []string, target generateTarget) error {
 	}
 
 	if target == generateTargetDebug {
-		generatedDebugConfigs := makeGeneratedDebugConfigs(selectedTests, pkgArg, relFilePath, cfg, allExtraGoTestArgs)
-
 		debugAbsPath := resolvePath(absRootPath, cfg.DebugPath)
-		mergedDebug, stats, err := mergeTasks(debugAbsPath, generatedDebugConfigs, cfg)
-		if err != nil {
-			return fmt.Errorf("merge debug configs: %w", err)
-		}
+		stats := mergeStats{}
+		var output []byte
 
-		output, err := marshalTasks(mergedDebug)
-		if err != nil {
-			return err
+		if opts.editor == editorKindVSCode {
+			generatedDebugConfigs := makeGeneratedVSCodeDebugConfigs(selectedTests, pkgArg, relFilePath, cfg, allExtraGoTestArgs)
+			mergedDoc, mergedStats, err := mergeVSCodeDebugConfigs(debugAbsPath, generatedDebugConfigs, cfg)
+			if err != nil {
+				return fmt.Errorf("merge debug configs: %w", err)
+			}
+			stats = mergedStats
+			output, err = marshalDocument(mergedDoc)
+			if err != nil {
+				return err
+			}
+		} else {
+			generatedDebugConfigs := makeGeneratedDebugConfigs(selectedTests, pkgArg, relFilePath, cfg, allExtraGoTestArgs)
+			mergedDebug, mergedStats, err := mergeTasks(debugAbsPath, generatedDebugConfigs, cfg)
+			if err != nil {
+				return fmt.Errorf("merge debug configs: %w", err)
+			}
+			stats = mergedStats
+			output, err = marshalTasks(mergedDebug)
+			if err != nil {
+				return err
+			}
 		}
 
 		if opts.dryRun {
@@ -304,15 +355,22 @@ func runGenerate(args []string, target generateTarget) error {
 
 func runClear(args []string) error {
 	var opts commonOptions
+	editorArg := string(editorKindZed)
 	fs := flag.NewFlagSet("clear", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	fs.StringVar(&opts.rootPath, "root", "", "Workspace root. If empty, auto-detected from go.mod/.git.")
 	fs.StringVar(&opts.tasksPathArg, "tasks", "", "Override tasks JSON path.")
 	fs.StringVar(&opts.debugPathArg, "debug", "", "Override debug JSON path.")
+	fs.StringVar(&editorArg, "editor", editorArg, "Editor target. Supported: zed, vscode.")
 	fs.BoolVar(&opts.dryRun, "dry-run", false, "Print resulting tasks JSON instead of writing it.")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	editor, err := parseEditorKind(editorArg)
+	if err != nil {
+		return err
+	}
+	opts.editor = editor
 
 	if opts.rootPath == "" {
 		cwd, err := os.Getwd()
@@ -333,24 +391,43 @@ func runClear(args []string) error {
 	}
 
 	tasksAbsPath := resolvePath(absRootPath, cfg.TasksPath)
-	existing, err := readTasks(tasksAbsPath)
-	if err != nil {
-		return fmt.Errorf("read tasks %q: %w", tasksAbsPath, err)
-	}
-
-	filtered := make([]map[string]any, 0, len(existing))
 	removed := 0
-	for _, task := range existing {
-		if isGenerated(task, cfg) {
-			removed++
-			continue
+	var output []byte
+	if opts.editor == editorKindVSCode {
+		doc, existing, err := readVSCodeTasksDocument(tasksAbsPath)
+		if err != nil {
+			return fmt.Errorf("read tasks %q: %w", tasksAbsPath, err)
 		}
-		filtered = append(filtered, task)
-	}
-
-	output, err := marshalTasks(filtered)
-	if err != nil {
-		return err
+		filtered := make([]map[string]any, 0, len(existing))
+		for _, task := range existing {
+			if isGenerated(task, cfg) {
+				removed++
+				continue
+			}
+			filtered = append(filtered, task)
+		}
+		doc["tasks"] = filtered
+		output, err = marshalDocument(doc)
+		if err != nil {
+			return err
+		}
+	} else {
+		existing, err := readTasks(tasksAbsPath)
+		if err != nil {
+			return fmt.Errorf("read tasks %q: %w", tasksAbsPath, err)
+		}
+		filtered := make([]map[string]any, 0, len(existing))
+		for _, task := range existing {
+			if isGenerated(task, cfg) {
+				removed++
+				continue
+			}
+			filtered = append(filtered, task)
+		}
+		output, err = marshalTasks(filtered)
+		if err != nil {
+			return err
+		}
 	}
 
 	if opts.dryRun {
@@ -381,39 +458,68 @@ func loadConfig(opts commonOptions) (Config, error) {
 	if opts.debugPathArg != "" {
 		cfg.DebugPath = opts.debugPathArg
 	}
+	if opts.editor == editorKindVSCode {
+		if opts.tasksPathArg == "" {
+			if _, set := os.LookupEnv(tasksPathEnvKey); !set {
+				cfg.TasksPath = defaultVSTasksPath
+			}
+		}
+		if opts.debugPathArg == "" {
+			if _, set := os.LookupEnv(debugPathEnvKey); !set {
+				cfg.DebugPath = defaultVSDebugPath
+			}
+		}
+	}
 	return cfg, nil
+}
+
+func parseEditorKind(value string) (editorKind, error) {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	switch normalized {
+	case "", string(editorKindZed):
+		return editorKindZed, nil
+	case string(editorKindVSCode):
+		return editorKindVSCode, nil
+	default:
+		return "", fmt.Errorf("unsupported editor %q (expected zed or vscode)", value)
+	}
 }
 
 func printUsage() {
 	fmt.Println(`Usage:
-  go-zed-tasks generate -file <path/to/file_test.go> [flags]
-  go-zed-tasks generate-debug -file <path/to/file_test.go> [flags]
-  go-zed-tasks clear [flags]
+	  go-zed-tasks generate -file <path/to/file_test.go> [flags]
+	  go-zed-tasks generate-debug -file <path/to/file_test.go> [flags]
+	  go-zed-tasks clear [flags]
 
 Commands:
-  generate        Scan file tests and write/update one Zed task per test.
-  generate-debug  Scan file tests and write/update one Zed debug config per test.
-  debug           Alias for generate-debug.
-  clear           Remove all previously auto-generated tasks.
+	  generate        Scan file tests and write/update one task per test.
+	  generate-debug  Scan file tests and write/update one debug config per test.
+	  debug           Alias for generate-debug.
+	  clear           Remove all previously auto-generated tasks.
 
 Flags (both commands):
-  -root      Workspace root (auto-detected if omitted)
-  -tasks     Override tasks file path
-  -debug     Override debug file path
-  -dry-run   Print resulting JSON instead of writing
+	  -root      Workspace root (auto-detected if omitted)
+	  -tasks     Override tasks file path
+	  -debug     Override debug file path
+	  -editor    Editor target: zed (default) or vscode
+	  -dry-run   Print resulting JSON instead of writing
 
 Generate-only:
-  -file      Go file to scan (required)
-  -go-test-arg  Extra go test argument (repeatable), also supports args after --.
-  -discover-subtests Run tests with go test -json and include discovered subtests.
-  -subtest-timeout Timeout for subtest discovery execution (default from env, 30s).
+	  -file      Go file to scan (required)
+	  -go-test-arg  Extra go test argument (repeatable), also supports args after --.
+	  -discover-subtests Run tests with go test -json and include discovered subtests.
+	  -subtest-timeout Timeout for subtest discovery execution (default from env, 30s).
 
-Configuration:
-  Uses environment variables with prefix ZED_GO_TASKS_.
-  Example: ZED_GO_TASKS_LABEL_PREFIX=unit:
+	Configuration:
+	  Uses environment variables with prefix ZED_GO_TASKS_.
+	  Example: ZED_GO_TASKS_LABEL_PREFIX=unit:
+
+	Editor defaults:
+	  zed     tasks=.zed/tasks.json, debug=.zed/debug.json
+	  vscode  tasks=.vscode/tasks.json, debug=.vscode/launch.json
 
 Backward compatibility:
-  go-zed-tasks -file <path> behaves the same as "generate".`)
+	  go-zed-tasks -file <path> behaves the same as "generate".`)
 }
 
 func findTestsInFile(path string, namePattern *regexp.Regexp) ([]string, error) {
@@ -561,6 +667,68 @@ func makeGeneratedDebugConfigs(testNames []string, pkgArg, relFilePath string, c
 		configs = append(configs, config)
 	}
 	return configs
+}
+
+func makeGeneratedVSCodeTasks(testNames []string, pkgArg, relFilePath string, cfg Config, extraGoTestArgs []string) []map[string]any {
+	tasks := make([]map[string]any, 0, len(testNames))
+	for _, testName := range testNames {
+		args := make([]string, 0, 5+len(extraGoTestArgs))
+		args = append(args, "test")
+		args = append(args, extraGoTestArgs...)
+		args = append(args, pkgArg, "-run", runPatternForTestName(testName))
+
+		task := map[string]any{
+			"label":   cfg.LabelPrefix + testName,
+			"type":    "shell",
+			"command": cfg.GoBinary,
+			"args":    args,
+			"group":   "test",
+			"options": map[string]any{
+				"env": map[string]any{
+					cfg.GeneratedEnvKey: cfg.GeneratedEnvValue,
+					"ZED_GO_TEST_NAME":  testName,
+					"ZED_GO_TEST_FILE":  relFilePath,
+				},
+			},
+		}
+		tasks = append(tasks, task)
+	}
+	return tasks
+}
+
+func makeGeneratedVSCodeDebugConfigs(testNames []string, pkgArg, relFilePath string, cfg Config, extraGoTestArgs []string) []map[string]any {
+	configs := make([]map[string]any, 0, len(testNames))
+	for _, testName := range testNames {
+		taskArgs := make([]string, 0, len(extraGoTestArgs)+2)
+		taskArgs = append(taskArgs, normalizeGoTestArgsForDelve(extraGoTestArgs)...)
+		taskArgs = append(taskArgs, "-test.run", runPatternForTestName(testName))
+
+		config := map[string]any{
+			"name":    cfg.DebugLabelPrefix + testName,
+			"type":    "go",
+			"request": "launch",
+			"mode":    "test",
+			"program": vscodeProgramForPackageArg(pkgArg),
+			"args":    taskArgs,
+			"env": map[string]any{
+				cfg.GeneratedEnvKey: cfg.GeneratedEnvValue,
+				"ZED_GO_TEST_NAME":  testName,
+				"ZED_GO_TEST_FILE":  relFilePath,
+			},
+		}
+		configs = append(configs, config)
+	}
+	return configs
+}
+
+func vscodeProgramForPackageArg(pkgArg string) string {
+	if pkgArg == "." {
+		return "${workspaceFolder}"
+	}
+	if strings.HasPrefix(pkgArg, "./") {
+		return "${workspaceFolder}/" + strings.TrimPrefix(pkgArg, "./")
+	}
+	return pkgArg
 }
 
 func normalizeGoTestArgsForDelve(args []string) []string {
@@ -751,45 +919,77 @@ func mergeTasks(tasksPath string, generated []map[string]any, cfg Config) ([]map
 	if err != nil {
 		return nil, mergeStats{}, err
 	}
+	merged, stats := mergeGeneratedEntries(existing, generated, cfg, "label")
+	return merged, stats, nil
+}
 
+func mergeVSCodeTasks(tasksPath string, generated []map[string]any, cfg Config) (map[string]any, mergeStats, error) {
+	doc, existing, err := readVSCodeTasksDocument(tasksPath)
+	if err != nil {
+		return nil, mergeStats{}, err
+	}
+	merged, stats := mergeGeneratedEntries(existing, generated, cfg, "label")
+	doc["tasks"] = merged
+	return doc, stats, nil
+}
+
+func mergeVSCodeDebugConfigs(path string, generated []map[string]any, cfg Config) (map[string]any, mergeStats, error) {
+	doc, existing, err := readVSCodeLaunchDocument(path)
+	if err != nil {
+		return nil, mergeStats{}, err
+	}
+	merged, stats := mergeGeneratedEntries(existing, generated, cfg, "name")
+	doc["configurations"] = merged
+	return doc, stats, nil
+}
+
+func mergeGeneratedEntries(existing []map[string]any, generated []map[string]any, cfg Config, key string) ([]map[string]any, mergeStats) {
 	filtered := make([]map[string]any, 0, len(existing))
 	removed := 0
-	for _, task := range existing {
-		if cfg.PruneGenerated && isGenerated(task, cfg) {
+	for _, entry := range existing {
+		if cfg.PruneGenerated && isGenerated(entry, cfg) {
 			removed++
 			continue
 		}
-		filtered = append(filtered, task)
+		filtered = append(filtered, entry)
 	}
 
-	labelIndex := make(map[string]int, len(filtered))
-	for i, task := range filtered {
-		if label, ok := task["label"].(string); ok {
-			labelIndex[label] = i
+	entryIndex := make(map[string]int, len(filtered))
+	for i, entry := range filtered {
+		if name, ok := entry[key].(string); ok {
+			entryIndex[name] = i
 		}
 	}
 
 	added := 0
 	updated := 0
-	for _, task := range generated {
-		label, _ := task["label"].(string)
-		if idx, ok := labelIndex[label]; ok {
-			filtered[idx] = task
+	for _, entry := range generated {
+		name, _ := entry[key].(string)
+		if idx, ok := entryIndex[name]; ok {
+			filtered[idx] = entry
 			updated++
 			continue
 		}
-		filtered = append(filtered, task)
-		labelIndex[label] = len(filtered) - 1
+		filtered = append(filtered, entry)
+		entryIndex[name] = len(filtered) - 1
 		added++
 	}
 
-	return filtered, mergeStats{Added: added, Updated: updated, Removed: removed}, nil
+	return filtered, mergeStats{Added: added, Updated: updated, Removed: removed}
 }
 
 func marshalTasks(tasks []map[string]any) ([]byte, error) {
 	output, err := json.MarshalIndent(tasks, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("serialize tasks JSON: %w", err)
+	}
+	return append(output, '\n'), nil
+}
+
+func marshalDocument(doc map[string]any) ([]byte, error) {
+	output, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("serialize JSON: %w", err)
 	}
 	return append(output, '\n'), nil
 }
@@ -829,6 +1029,85 @@ func readTasks(path string) ([]map[string]any, error) {
 	}
 
 	return tasks, nil
+}
+
+func readVSCodeTasksDocument(path string) (map[string]any, []map[string]any, error) {
+	doc, err := readObject(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	if version, ok := doc["version"].(string); !ok || strings.TrimSpace(version) == "" {
+		doc["version"] = defaultVSCodeVersion
+	}
+	tasks, err := readObjectSlice(doc, "tasks")
+	if err != nil {
+		return nil, nil, err
+	}
+	return doc, tasks, nil
+}
+
+func readVSCodeLaunchDocument(path string) (map[string]any, []map[string]any, error) {
+	doc, err := readObject(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	if version, ok := doc["version"].(string); !ok || strings.TrimSpace(version) == "" {
+		doc["version"] = defaultVSLaunchVer
+	}
+	configs, err := readObjectSlice(doc, "configurations")
+	if err != nil {
+		return nil, nil, err
+	}
+	return doc, configs, nil
+}
+
+func readObject(path string) (map[string]any, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return map[string]any{}, nil
+		}
+		return nil, err
+	}
+
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 {
+		return map[string]any{}, nil
+	}
+
+	normalized, err := normalizeRelaxedJSON(data)
+	if err != nil {
+		return nil, err
+	}
+
+	var doc map[string]any
+	if err := json.Unmarshal(normalized, &doc); err != nil {
+		return nil, err
+	}
+	if doc == nil {
+		doc = map[string]any{}
+	}
+	return doc, nil
+}
+
+func readObjectSlice(doc map[string]any, key string) ([]map[string]any, error) {
+	value, ok := doc[key]
+	if !ok || value == nil {
+		return []map[string]any{}, nil
+	}
+	raw, ok := value.([]any)
+	if !ok {
+		return nil, fmt.Errorf("%q must be an array", key)
+	}
+	entries := make([]map[string]any, 0, len(raw))
+	for i, item := range raw {
+		m, ok := item.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("%q[%d] must be an object", key, i)
+		}
+		entries = append(entries, m)
+	}
+	return entries, nil
 }
 
 func normalizeRelaxedJSON(data []byte) ([]byte, error) {
@@ -966,27 +1245,39 @@ func isJSONWhitespace(ch byte) bool {
 }
 
 func isGenerated(task map[string]any, cfg Config) bool {
-	envAny, ok := task["env"]
+	if val, ok := generatedValueFromEnvMap(task["env"], cfg.GeneratedEnvKey); ok {
+		return val == cfg.GeneratedEnvValue
+	}
+
+	optionsAny, ok := task["options"]
 	if !ok {
 		return false
 	}
-
-	env, ok := envAny.(map[string]any)
+	options, ok := optionsAny.(map[string]any)
 	if !ok {
 		return false
 	}
-
-	valAny, ok := env[cfg.GeneratedEnvKey]
+	val, ok := generatedValueFromEnvMap(options["env"], cfg.GeneratedEnvKey)
 	if !ok {
 		return false
 	}
+	return val == cfg.GeneratedEnvValue
+}
 
+func generatedValueFromEnvMap(value any, key string) (string, bool) {
+	env, ok := value.(map[string]any)
+	if !ok {
+		return "", false
+	}
+	valAny, ok := env[key]
+	if !ok {
+		return "", false
+	}
 	val, ok := valAny.(string)
 	if !ok {
-		return false
+		return "", false
 	}
-
-	return val == cfg.GeneratedEnvValue
+	return val, true
 }
 
 func detectWorkspaceRoot(start string) string {

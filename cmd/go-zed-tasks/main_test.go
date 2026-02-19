@@ -359,6 +359,170 @@ func TestOne(t *testing.T) {}
 	assert.Equal(t, "target_test.go", env["ZED_GO_TEST_FILE"])
 }
 
+func TestRunGenerate_VSCode_WritesTasksJSON(t *testing.T) {
+	clearConfigEnv(t)
+
+	root := t.TempDir()
+	targetFile := filepath.Join(root, "target_test.go")
+	tasksPath := filepath.Join(root, ".vscode", "tasks.json")
+
+	writeFile(t, filepath.Join(root, "go.mod"), "module example.com/sample\n\ngo 1.22\n")
+	writeFile(t, targetFile, `package sample
+import "testing"
+
+func TestOne(t *testing.T) {}
+`)
+	writeFile(t, tasksPath, `{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "manual",
+      "type": "shell",
+      "command": "echo"
+    },
+    {
+      "label": "go:Old",
+      "type": "shell",
+      "command": "go",
+      "options": {
+        "env": {
+          "ZED_GO_TEST_TASK_GENERATED": "1"
+        }
+      }
+    }
+  ]
+}`)
+
+	err := runGenerate([]string{
+		"-file", targetFile,
+		"-root", root,
+		"-editor", "vscode",
+	}, generateTargetTasks)
+	require.NoError(t, err)
+
+	doc, tasks, err := readVSCodeTasksDocument(tasksPath)
+	require.NoError(t, err)
+	assert.Equal(t, "2.0.0", doc["version"])
+
+	labels := labelsFromTasks(tasks)
+	sort.Strings(labels)
+	assert.Equal(t, []string{"go:TestOne", "manual"}, labels)
+
+	task := taskByLabel(t, tasks, "go:TestOne")
+	assert.Equal(t, "shell", task["type"])
+	assert.Equal(t, "go", task["command"])
+	assert.Equal(t, "test", task["group"])
+
+	args := toStringSlice(t, task["args"])
+	assert.Equal(t, []string{"test", ".", "-run", "^TestOne$"}, args)
+
+	options, ok := task["options"].(map[string]any)
+	require.True(t, ok, "expected task.options to be an object")
+	env := toStringMap(t, options["env"])
+	assert.Equal(t, "1", env["ZED_GO_TEST_TASK_GENERATED"])
+	assert.Equal(t, "TestOne", env["ZED_GO_TEST_NAME"])
+	assert.Equal(t, "target_test.go", env["ZED_GO_TEST_FILE"])
+}
+
+func TestRunGenerateDebug_VSCode_WritesLaunchJSON(t *testing.T) {
+	clearConfigEnv(t)
+
+	root := t.TempDir()
+	targetFile := filepath.Join(root, "target_test.go")
+	launchPath := filepath.Join(root, ".vscode", "launch.json")
+
+	writeFile(t, filepath.Join(root, "go.mod"), "module example.com/sample\n\ngo 1.22\n")
+	writeFile(t, targetFile, `package sample
+import "testing"
+
+func TestOne(t *testing.T) {}
+`)
+
+	err := runGenerate([]string{
+		"-file", targetFile,
+		"-root", root,
+		"-editor", "vscode",
+		"-go-test-arg=-v",
+	}, generateTargetDebug)
+	require.NoError(t, err)
+
+	doc, configs, err := readVSCodeLaunchDocument(launchPath)
+	require.NoError(t, err)
+	assert.Equal(t, "0.2.0", doc["version"])
+	require.Len(t, configs, 1)
+
+	var config map[string]any
+	for _, candidate := range configs {
+		if name, ok := candidate["name"].(string); ok && name == "go:debug:TestOne" {
+			config = candidate
+			break
+		}
+	}
+	require.NotNil(t, config, "expected config with name %q", "go:debug:TestOne")
+	assert.Equal(t, "go", config["type"])
+	assert.Equal(t, "launch", config["request"])
+	assert.Equal(t, "test", config["mode"])
+	assert.Equal(t, "${workspaceFolder}", config["program"])
+
+	args := toStringSlice(t, config["args"])
+	assert.Equal(t, []string{"-test.v", "-test.run", "^TestOne$"}, args)
+
+	env := toStringMap(t, config["env"])
+	assert.Equal(t, "1", env["ZED_GO_TEST_TASK_GENERATED"])
+	assert.Equal(t, "TestOne", env["ZED_GO_TEST_NAME"])
+	assert.Equal(t, "target_test.go", env["ZED_GO_TEST_FILE"])
+}
+
+func TestRunClear_VSCode_RemovesOnlyGeneratedTasks(t *testing.T) {
+	clearConfigEnv(t)
+
+	root := t.TempDir()
+	tasksPath := filepath.Join(root, ".vscode", "tasks.json")
+	writeFile(t, tasksPath, `{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "manual",
+      "type": "shell",
+      "command": "echo"
+    },
+    {
+      "label": "go:Generated",
+      "type": "shell",
+      "command": "go",
+      "options": {
+        "env": {
+          "ZED_GO_TEST_TASK_GENERATED": "1"
+        }
+      }
+    },
+    {
+      "label": "go:Keep",
+      "type": "shell",
+      "command": "go",
+      "options": {
+        "env": {
+          "ZED_GO_TEST_TASK_GENERATED": "0"
+        }
+      }
+    }
+  ]
+}`)
+
+	err := runClear([]string{
+		"-root", root,
+		"-editor", "vscode",
+	})
+	require.NoError(t, err)
+
+	_, tasks, err := readVSCodeTasksDocument(tasksPath)
+	require.NoError(t, err)
+
+	labels := labelsFromTasks(tasks)
+	sort.Strings(labels)
+	assert.Equal(t, []string{"go:Keep", "manual"}, labels)
+}
+
 func TestRunGenerate_DiscoverSubtests_GeneratesTasksForDiscoveredSubtests(t *testing.T) {
 	clearConfigEnv(t)
 
