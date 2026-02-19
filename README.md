@@ -5,6 +5,7 @@ Small Go CLI that generates one task per test in a selected Go file for Zed or V
 It:
 - Finds test functions in the given file (`Test...` by default).
 - Verifies runnable tests with `go test -list`.
+- Discovers dynamic subtests by running tests first with `go test -json` (when `-discover-subtests` is enabled).
 - Writes/updates tasks with labels like `go:TestName`.
 - Keeps non-generated tasks untouched.
 
@@ -48,7 +49,8 @@ go run ./cmd/go-zed-tasks generate -file path/to/foo_test.go -editor vscode
 go run ./cmd/go-zed-tasks debug -file path/to/foo_test.go -editor vscode
 ```
 
-Discover dynamic subtests first, then generate tasks:
+Discover dynamic subtests first, then generate tasks.
+Important: subtest discovery executes the tests (via `go test -json`) before writing tasks:
 
 ```bash
 go run ./cmd/go-zed-tasks generate -file path/to/foo_test.go -discover-subtests
@@ -77,7 +79,7 @@ You just need to add this to your `tasks.json` file to make this package work fo
 [
   {
     "label": "go-discover",
-    "command": "go run github.com/VashingMachine/go-zed-test/cmd/go-zed-tasks@${VERSION} generate -file ${ZED_FILE} -discover-subtests -go-test-arg='-v' -go-test-arg='-count=1'",
+    "command": "go run github.com/VashingMachine/go-zed-test/cmd/go-zed-tasks@0.0.5 generate -file ${ZED_FILE} -discover-subtests -go-test-arg='-v' -go-test-arg='-count=1'",
     "env": { "ZED_GO_TASKS_PRUNE_GENERATED": "false" },
     "reveal": "always",
     "reveal_target": "dock",
@@ -86,7 +88,7 @@ You just need to add this to your `tasks.json` file to make this package work fo
   },
   {
     "label": "go-discover-debug",
-    "command": "go run github.com/VashingMachine/go-zed-test/cmd/go-zed-tasks@${VERSION} debug -file ${ZED_FILE} -discover-subtests -go-test-arg='-v' -go-test-arg='-count=1'",
+    "command": "go run github.com/VashingMachine/go-zed-test/cmd/go-zed-tasks@0.0.5 debug -file ${ZED_FILE} -discover-subtests -go-test-arg='-v' -go-test-arg='-count=1'",
     "reveal": "always",
     "reveal_target": "dock",
     "hide": "never",
@@ -106,12 +108,12 @@ Use `-editor vscode` and optional defaults from `.vscode/tasks.json`:
     {
       "label": "go-discover",
       "type": "shell",
-      "command": "go run github.com/VashingMachine/go-zed-test/cmd/go-zed-tasks@${VERSION} generate -editor vscode -file ${file} -discover-subtests -go-test-arg=-v -go-test-arg=-count=1"
+      "command": "go run github.com/VashingMachine/go-zed-test/cmd/go-zed-tasks@0.0.5 generate -editor vscode -file ${file} -discover-subtests -go-test-arg=-v -go-test-arg=-count=1"
     },
     {
       "label": "go-discover-debug",
       "type": "shell",
-      "command": "go run github.com/VashingMachine/go-zed-test/cmd/go-zed-tasks@${VERSION} debug -editor vscode -file ${file} -discover-subtests -go-test-arg=-v -go-test-arg=-count=1"
+      "command": "go run github.com/VashingMachine/go-zed-test/cmd/go-zed-tasks@0.0.5 debug -editor vscode -file ${file} -discover-subtests -go-test-arg=-v -go-test-arg=-count=1"
     }
   ]
 }
